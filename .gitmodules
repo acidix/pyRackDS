@@ -1,0 +1,6 @@
+[submodule "lib/racktables"]
+	path = lib/racktables
+	url = https://github.com/ibettinger/racktables-py-client/lib/racktables
+[submodule "server/racktables"]
+	path = server/racktables
+	url = https://github.com/ibettinger/racktables
