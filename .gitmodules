@@ -1,6 +1,3 @@
-[submodule "server/racktables"]
-	path = server
-	url = https://github.com/ibettinger/racktables
 [submodule "python"]
 	path = python
 	url = https://github.com/ibettinger/racktables-py-client
