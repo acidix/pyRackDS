@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+
+import ipaddress
+import sys,os,inspect,ConfigParser
+from pprint import pprint
+from Cheetah.Template import Template
+
+racklib = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
+sys.path.insert(0, racklib)
+from client import *
+
+# Read Configuration
+configdir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
+config = ConfigParser.ConfigParser()
+config.readfp(open(configdir + '/defaults.cfg'))
+
+templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
+
+# Open the client api
+#rtClient = RacktablesClient(config.get('main', 'apiurl').strip('"'), config.get('main', 'username'), config.get('main', 'password'))
+
+# Initialize Trees
+allNetworks = {}
+allHosts = {}
+allTags = {
+	'puppet_tags' : [],
+	'cobbler_tags': [],
+	'other_tags'  : []
+}
+
+######## Populate all ipv4 networks ########
+
+# Initialize the Network tree
+rtNetworks = rtClient.get_ipv4space()
+
+
+for rtNetwork in rtNetworks.items():
+	allNetworks[rtNetwork[1]['id']] = { 
+		'id' 		: rtNetwork[1]['id'], 
+		'ip' 		: rtNetwork[1]['ip'], 
+		'mask' 		: rtNetwork[1]['mask'], 
+		'name' 		: rtNetwork[1]['name'],
+		'comment'	: rtNetwork[1]['comment'],
+		'static'	: {},
+		'dynamic'	: {}
+	}
+
+######## Populate all hosts ########
+
+# Initialize the Hosts tree
+rtHosts = rtClient.get_objects()
+
+for rtHost in rtHosts.items():
+	allHosts[rtHost[1]['id']] = {	
+		'id' 		      : rtHost[1]['id'],
+		'name'		      : rtHost[1]['name'],
+		'dname'		      : rtHost[1]['dname'],
+		'label'		      : rtHost[1]['label'],
+		'objtype_id'      : rtHost[1]['objtype_id'],
+		'ifaces'	      : {},
+		'puppet_tags'     : [],
+		'other_tags'      : [],
+		'cobbler_profile' : ""
+	}
+
+	rtHostInfos = rtClient.get_object(rtHost[1]['id'])
+
+	# Add tags
+	for etag in rtHostInfos['etags'].items():
+		if etag[1]['parent_id'] != "":
+			if rtHostInfos['itags'][etag[1]['parent_id']]['tag'] == config.get('tags', 'puppet_parent'):
+				allHosts[rtHost[1]['id']]['puppet_tags'].append(etag[1]['tag'])
+			elif rtHostInfos['itags'][etag[1]['parent_id']]['tag'] == config.get('tags', 'cobbler_parent'):
+				allHosts[rtHost[1]['id']]['cobbler_profile'] = etag[1]['tag']
+			else:
+				allHosts[rtHost[1]['id']]['other_tags'].append(etag[1]['tag'])
+		else :
+			allHosts[rtHost[1]['id']]['other_tags'].append(etag[1]['tag'])
+
+	# Add network information to host
+	# Loop over all ipv4 objects of the host
+	for rtHostInfo in rtHostInfos['ipv4'].items():
+		# For multiple assignments to one address, all interface assigned are reported.
+		# This is to loop over all interfaces allocated to this address and then find
+		# the one that matches our object_id
+		for rtHostAlloc in rtHostInfo[1]['addrinfo']['allocs'].items():
+			if (rtHostAlloc[1]['object_id'] == rtHost[1]['id']):
+				allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']] = {	
+					'name'	: rtHostAlloc[1]['name'],
+					'addr'	: rtHostInfo[1]['addrinfo']['ip']
+				}
+				# Add L2 address info to each interface with an IP
+				# This information is located in a different tree (ports)
+				for rtHostLink in rtHostInfos['ports'].items():
+					if (rtHostLink[1]['name'] == rtHostAlloc[1]['name']):
+						allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['mac'] = rtHostLink[1]['l2address']
+						allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn'] = rtHostLink[1]['label']
+
+				# Add network information to the network tree
+				# We have to loop over all known Networks to see where we belong to
+				for Network in allNetworks.values():
+					NetworkAddr = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['addr']
+					NetworkObj = Network['ip'] + '/' + Network['mask']
+
+					# Add static assignments
+					# Check if our address belongs to the network, but is not the network address itself
+					if ( ( ipaddress.ip_address(NetworkAddr) in ipaddress.ip_network(NetworkObj) ) and ( NetworkAddr != Network['ip'] ) ):
+						try:
+							_iface = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['name']
+							_addr  = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['addr']
+							_fqdn  = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn']
+							_mac   = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['mac']
+							# Check if all values are set, otherwise our config will look mangled
+							if ( _addr and _fqdn and _mac ):
+								allNetworks[Network['id']]['static'][allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn']] = {
+									'iface'	: _iface,
+									'addr'	: _addr,
+									'fqdn'	: _fqdn,
+									'mac'	: _mac
+								}
+						except KeyError:
+							continue
+					# Add dynamic assignments - allocations on the network address
+					# Allocate IP = Network address to put the host into a dynamic range
+					elif (NetworkAddr == Network['ip']):
+						try:
+							_iface = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['name']
+							_fqdn  = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn']
+							_mac   = allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['mac']
+							# Check if all values are set, otherwise our config will look mangled
+							if ( _fqdn and _mac ):
+								allNetworks[Network['id']]['dynamic'][allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn']] = {
+									'iface'	: _iface,
+									'fqdn'	: _fqdn,
+									'mac'	: _mac
+								}
+						except KeyError:
+							continue
+
+
+######## Populate all tags ########
+
+# Initialize the Tag tree
+rtTags = rtClient.get_tags(True)
+
+for rtTag in rtTags.items():
+	if rtTag[1]['kidc'] == 0:
+		# If the tag doesn't have childs, just add it to other_tags
+		allTags['other_tags'].append(rtTag[1].tag)
+	else:
+		if rtTag[1]['tag'] == config.get('tags', 'puppet_parent'):
+			# Add all kids of the puppet tree to puppet_tags
+			for rtTagKid in rtTag[1]['kids'].items():
+				allTags['puppet_tags'].append(rtTagKid[1]['tag'])
+		elif rtTag[1]['tag'] == config.get('tags', 'cobbler_parent'):
+			# Add all kids of the cobbler tree to cobbler_tags
+			for rtTagKid in rtTag[1]['kids'].items():
+				allTags['cobbler_tags'].append(rtTagKid[1]['tag'])	
+		else:
+			# This is hierarchical, but neither puppet nor cobbler
+			# Flatten and add to other_tags
+			allTags['other_tags'].append(rtTag[1].tag)
+			for rtTagKid in rtTag[1]['kids'].items():
+				allTags['other_tags'].append(rtTagKid[1]['tag'])	
+# Debug
+#pprint(allHosts['11'])
+
+# Loop through all networks
+
+pprint.pprint(allTags)
+#pprint.pprint(allNetworks)
+
+#pprint.pprint(allHosts)
+
+
+#for dirname, dirnames, filenames in os.walk(templatedir):
+#	for filename in filenames:
+#		path = os.path.join(templatedir, filename)
+#		# render template
+#		template = Template( file = path, searchList = (allHosts, allNetworks) )
+#		print template
+	
+
+
+
