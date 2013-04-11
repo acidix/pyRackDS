@@ -1,0 +1,21 @@
+#for $host in $allHosts
+cobblersystem { '$host['name'].eaalab.hpi.uni-potsdam.de':
+  ensure     => present,
+  profile    => 'CentOS-6.3-x86_64',
+  #for $interface in $host['ifaces']
+  interfaces => { '$interface['name']' => {
+                    mac_address => '$interface['mac'],
+                    static      => true,
+                    management  => true,
+                    ip_address  => '$interface['addr'],
+                    netmask     => '255.255.255.0', 
+                    dns_name    => '$interface['fqdn']
+                  },
+                },
+  #end for
+  gateway    => '10.8.16.51',
+  hostname   => '$host['name'].eaalab.hpi.uni-potsdam.de',
+  netboot    => false,
+  comment    => '$host['label']
+}
+#end for
