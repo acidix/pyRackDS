@@ -12,12 +12,13 @@ from client import *
 # Read Configuration
 configdir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
 config = ConfigParser.ConfigParser()
-config.readfp(open(configdir + '/defaults.cfg'))
+config.readfp(open(configdir + '/main.cfg'))
 
 templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
+definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
 
 # Open the client api
-#rtClient = RacktablesClient(config.get('main', 'apiurl').strip('"'), config.get('main', 'username'), config.get('main', 'password'))
+rtClient = RacktablesClient(config.get('main', 'apiurl').strip('"'), config.get('main', 'username'), config.get('main', 'password'))
 
 # Initialize Trees
 allNetworks = {}
@@ -167,19 +168,36 @@ for rtTag in rtTags.items():
 
 # Loop through all networks
 
-pprint.pprint(allTags)
+#pprint.pprint(allTags)
 #pprint.pprint(allNetworks)
 
 #pprint.pprint(allHosts)
 
+# Start the templating process
+for dirname, dirnames, filenames in os.walk(templatedir):
+	for filename in filenames:
+		#try:
+			if filename.split('.')[1] == 'tmpl':
+				path = os.path.join(templatedir, filename)
+				definition = ConfigParser.ConfigParser()
+				definition.readfp(open(definitiondir + '/' + filename.split('.')[0] + '.cfg'))
 
-#for dirname, dirnames, filenames in os.walk(templatedir):
-#	for filename in filenames:
-#		path = os.path.join(templatedir, filename)
-#		# render template
-#		template = Template( file = path, searchList = (allHosts, allNetworks) )
-#		print template
-	
+				# Read Definition
+				outputdir = definition.get('definition', 'outputdir')
+				extension = definition.get('definition', 'extension')
+				burst = definition.get('definition', 'burst')
+
+				if burst == 'none':
+					renderedTemplate = Template( file = path, searchList = [ locals() ] )
+					print renderedTemplate
+
+				# render template
+				#template = Template( file = path, searchList = (allHosts, allNetworks) )
+			#print template
+		#except IndexError:
+		#	print 'Oops! There was a problem with ' + filename
+		#except IOError:
+		#	print 'Oops! No definition found for ' + filename
 
 
 
