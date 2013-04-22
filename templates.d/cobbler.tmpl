@@ -1,0 +1,18 @@
+#for $hostkey, $Host in $allHosts.items()
+cobblersystem { '${Host.name}.eaalab.hpi.uni-potsdam.de':
+  ensure     => present,
+  profile    => '$Host.cobbler_profile',
+  #for $ifacekey, $Interface in $Host.ifaces.items()
+  interfaces => { '$Interface.name' => {
+                    mac_address => '$Interface.mac',
+                    static      => true,
+                    management  => true,
+                    ip_address  => '$Interface.addr',
+                    netmask     => '$Interface.mask',
+                    dns_name    => '$Interface.fqdn'
+                  },
+  #end for
+  hostname   => '${Host.name}.eaalab.hpi.uni-potsdam.de',
+  comment    => '$Host.comment'
+}
+#end for
