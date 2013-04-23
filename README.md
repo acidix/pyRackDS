@@ -1,15 +1,15 @@
 pyRackDS
 ========
 
-Python data services for [Racktables][http://github.com/racktables/racktables].
+Python data services for [Racktables](http://github.com/RackTables/racktables).
 
 # What does it do?
 
 This package is intended to, ultimately, be a two-way interface to:
-* use data from [Racktables][http://github.com/racktables/racktables] to create different kinds of configuration files, and
-* use third-party applications to pump data into [Racktables][http://github.com/racktables/racktables] (such as facter)
+* use data from [Racktables](http://github.com/racktables/racktables) to create different kinds of configuration files, and
+* use third-party applications to pump data into [Racktables](http://github.com/racktables/racktables) (such as facter)
 
-Currently this heavily relies on the work of [Ian Bettinger][https://github.com/ibettinger] from which I borrow both, the PHP-based [Racktables-API][https://github.com/ibettinger/racktables-api] and the corresponding [Python module][https://github.com/ibettinger/racktables-python] to consume the data. 
+Currently this heavily relies on the work of [Ian Bettinger](https://github.com/ibettinger) from which I borrow both, the PHP-based [Racktables-API](https://github.com/ibettinger/racktables) and the corresponding [Python module](https://github.com/ibettinger/racktables-py-client) to consume the data. 
 
 What you will get is a well documented, Python-dictionary based way of creating files via the Cheetah templating engine. This by itself is sufficient to create e.g.
 
