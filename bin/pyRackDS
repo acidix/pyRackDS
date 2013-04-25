@@ -9,6 +9,13 @@ racklib = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.ge
 sys.path.insert(0, racklib)
 from client import *
 
+def calcDottedNetmask(mask):
+    bits = 0
+    for i in xrange(32-mask,32):
+        bits |= (1 << i)
+    return "%d.%d.%d.%d" % ((bits & 0xff000000) >> 24, (bits & 0xff0000) >> 16, (bits & 0xff00) >> 8 , (bits & 0xff))
+
+
 # Read Configuration
 configdir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
 config = ConfigParser.ConfigParser()
@@ -39,7 +46,7 @@ for rtNetworkIdx, rtNetwork in rtNetworks.items():
 	allNetworks[rtNetwork['id']] = { 
 		'id' 		: rtNetwork['id'], 
 		'ip' 		: rtNetwork['ip'], 
-		'mask' 		: rtNetwork['mask'], 
+		'mask' 		: calcDottedNetmask(int(rtNetwork['mask'])), 
 		'name' 		: rtNetwork['name'],
 		'comment'	: rtNetwork['comment'],
 		'static'	: {},
