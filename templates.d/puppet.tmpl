@@ -4,6 +4,6 @@ node $host.name {
 	#end for
 
 	if defined( "$host.name") {
-		include "$host.name"
+		class { "$host.name": }
 	}
 }
