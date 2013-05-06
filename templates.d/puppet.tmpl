@@ -2,4 +2,8 @@ node $host.name {
 	#for $puppet_class in $host.puppet_tags
 	include $puppet_class
 	#end for
+
+	if defined( "$host.name") {
+		include "$host.name"
+	}
 }
