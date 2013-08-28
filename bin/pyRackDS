@@ -5,10 +5,14 @@ import sys,os,inspect,ConfigParser
 from pprint import pprint
 from Cheetah.Template import Template
 
+## Libpath quirks
 racklib = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
 sys.path.insert(0, racklib)
 from client import *
 
+## -----------------------------------------
+## Helper function to calculate a dotted netmask
+## -----------------------------------------
 def calcDottedNetmask(mask):
     bits = 0
     for i in xrange(32-mask,32):
@@ -16,18 +20,23 @@ def calcDottedNetmask(mask):
     return "%d.%d.%d.%d" % ((bits & 0xff000000) >> 24, (bits & 0xff0000) >> 16, (bits & 0xff00) >> 8 , (bits & 0xff))
 
 
-# Read Configuration
+## Read Configuration
 configdir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
 config = ConfigParser.ConfigParser()
 config.readfp(open(configdir + '/main.cfg'))
 
-templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
-definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
+## Define configuration options
+__templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
+__definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
+__username = config.get('main', 'username')
+__password = config.get('main', 'password')
+__apiurl = config.get('main', 'apiurl').strip('"')
+__tftp_restrict = config.get('conf', 'restrict_tftp')
 
-# Open the client api
-rtClient = RacktablesClient(config.get('main', 'apiurl').strip('"'), config.get('main', 'username'), config.get('main', 'password'))
+## Open the client api
+rtClient = RacktablesClient(__apiurl, __username, __password)
 
-# Initialize Trees
+## Initialize Trees
 allNetworks = {}
 allHosts = {}
 allTags = {
@@ -36,11 +45,12 @@ allTags = {
 	'other_tags'  : []
 }
 
-######## Populate all ipv4 networks ########
+## -----------------------------------------
+## Populate all ipv4 networks
+## -----------------------------------------
 
-# Initialize the Network tree
+## Initialize the Network tree
 rtNetworks = rtClient.get_ipv4space()
-
 
 for rtNetworkIdx, rtNetwork in rtNetworks.items():
 	allNetworks[rtNetwork['id']] = { 
@@ -53,9 +63,11 @@ for rtNetworkIdx, rtNetwork in rtNetworks.items():
 		'dynamic'	: {}
 	}
 
-######## Populate all hosts ########
+## -----------------------------------------
+## Populate all hosts
+## -----------------------------------------
 
-# Initialize the Hosts tree
+## Initialize the Hosts tree
 rtHosts = rtClient.get_objects()
 
 for rtHostIdx, rtHost in rtHosts.items():
@@ -69,12 +81,13 @@ for rtHostIdx, rtHost in rtHosts.items():
 		'comment'         : rtHost['comment'],
 		'puppet_tags'     : [],
 		'other_tags'      : [],
-		'cobbler_profile' : ""
-	}
+		'cobbler_profile' : "",
+		'netboot'         : False
+		}
 
 	rtHostInfos = rtClient.get_object(rtHost['id'])
 
-	# Add tags
+	## Add tags to host
 	for etagidx, etag in rtHostInfos['etags'].items():
 		if etag['parent_id'] != "":
 			if rtHostInfos['itags'][etag['parent_id']]['tag'] == config.get('tags', 'puppet_parent'):
@@ -84,6 +97,8 @@ for rtHostIdx, rtHost in rtHosts.items():
 			else:
 				allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
 		else :
+			if etag['tag'] == config.get('tags', 'netboot'):
+				allHosts[rtHost['id']]['netboot'] = True
 			allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
 
 	# Add network information to host
@@ -172,17 +187,17 @@ for rtTagIdx, rtTag in rtTags.items():
 		else:
 			# This is hierarchical, but neither puppet nor cobbler
 			# Flatten and add to other_tags
-			allTags['other_tags'].append(rtTag.tag)
+			allTags['other_tags'].append(rtTag['tag'])
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['other_tags'].append(rtTagKid['tag'])	
 
 # Start the templating process
-for dirname, dirnames, filenames in os.walk(templatedir):
+for dirname, dirnames, filenames in os.walk(__templatedir):
 	for filename in filenames:
 		if filename.split('.')[1] == 'tmpl':
-			path = os.path.join(templatedir, filename)
+			path = os.path.join(__templatedir, filename)
 			definition = ConfigParser.ConfigParser()
-			definition.readfp(open(definitiondir + '/' + filename.split('.')[0] + '.cfg'))
+			definition.readfp(open(__definitiondir + '/' + filename.split('.')[0] + '.cfg'))
 			# Read Definition
 			burst = definition.get('definition', 'burst')
 			outputdir = definition.get('definition', 'outputdir')
@@ -240,10 +255,15 @@ for dirname, dirnames, filenames in os.walk(templatedir):
 			elif burst == 'tftp':
 				try:
 					for hostidx, host in allHosts.items():
-						for ifaceidx, iface in host['ifaces'].items():
-							renderedTemplate = Template( file = path, searchList = [ {'iface' : iface} ] )
-							outfile = open(outputdir + iface['mac'].lower().replace(":", "-"), "w")
-							outfile.write(str(renderedTemplate))
+						if __tftp_restrict == "False" or host['netboot'] == True:
+							for ifaceidx, iface in host['ifaces'].items():
+								try:
+									if iface['mac'] != '':
+										renderedTemplate = Template( file = path, searchList = [ {'iface' : iface} ] )
+										outfile = open(outputdir + iface['mac'].lower().replace(":", "-"), "w")
+										outfile.write(str(renderedTemplate))
+								except Exception, errtxt:
+									print errtxt
 				except IOError:
 					pass
 				finally:
