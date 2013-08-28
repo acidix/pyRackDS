@@ -1,0 +1,47 @@
+local-address 192.168.0.1;
+
+server-identifier       192.168.0.1;
+ddns-updates            on;
+ddns-update-style       interim;
+ddns-domainname         "mydomain.lan";
+ddns-rev-domainname     "in-addr.arpa.";
+ignore                  client-updates;
+include                 "/etc/bind/rndc.key";
+
+allow booting;
+allow bootp;
+
+ignore client-updates;
+default-lease-time 10800;
+set vendorclass = option vendor-class-identifier;
+
+authoritative;
+
+subnet 192.168.0.0 netmask 255.255.255.0 {
+     option routers             192.168.0.1;
+     option domain-name-servers 192.168.0.1;
+     option domain-name         "eaalab.hpi.uni-potsdam.de";
+     option subnet-mask         255.255.255.0;
+     option ntp-servers         192.168.0.1;
+     filename                   "/pxelinux.0";
+     default-lease-time         21600;
+     max-lease-time             43200;
+     next-server                192.168.0.1;
+}
+
+group {
+
+#for $hostkey, $Host in $allHosts.items()
+  #for $ifacekey, $Interface in $Host.ifaces.items()
+	$Interface.fqdn {
+		hardware-ethernet $Interface.mac;
+		fixed-address $Interface.addr;
+		option host-name "$Interface.fqdn";
+		option subnet-mast 255.255.255.0;
+		filename "/pxelinux.0";
+		next-server 192.168.0.1;
+	}
+  #end for
+#end for
+
+}
