@@ -56,6 +56,8 @@ This is tricky. And the name might be confusing - but it works for me. I wanted 
 (available dictionary: *network*)
 - tags
 (available dictionary: *tag*)
+- tftp
+(available dictionary: *iface*)
 
 For burst mode *none*, the output file will be named like the template, with the ending specified in the definition (mytemplate.tmpl with mytemplate.cfg will create mytemplate.extension). For all other burst methods, the files will be named like the subelement-name followed by the extension. For hosts, this means you get:
 
@@ -69,6 +71,8 @@ The definition uses the default Python *ConfigParser* module and therefore looks
     outputdir = /var/tmp/puppet/
     extension = .pp
     burst = hosts
+
+The configuration option *extension* is optional (aka not used) for burst methode *tftp*
 
 
 # Configuring pyRackDS
