@@ -1,0 +1,7 @@
+default linux
+prompt 0
+timeout 1
+label linux
+        kernel /images2/memtest86
+        ipappend 2
+        append  ksdevice=bootif lang=  locale=en_US text priority=critical kssendmac

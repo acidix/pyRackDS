@@ -179,62 +179,77 @@ for rtTagIdx, rtTag in rtTags.items():
 # Start the templating process
 for dirname, dirnames, filenames in os.walk(templatedir):
 	for filename in filenames:
-		#try:
-			if filename.split('.')[1] == 'tmpl':
-				path = os.path.join(templatedir, filename)
-				definition = ConfigParser.ConfigParser()
-				definition.readfp(open(definitiondir + '/' + filename.split('.')[0] + '.cfg'))
-
-				# Read Definition
-				outputdir = definition.get('definition', 'outputdir')
+		if filename.split('.')[1] == 'tmpl':
+			path = os.path.join(templatedir, filename)
+			definition = ConfigParser.ConfigParser()
+			definition.readfp(open(definitiondir + '/' + filename.split('.')[0] + '.cfg'))
+			# Read Definition
+			burst = definition.get('definition', 'burst')
+			outputdir = definition.get('definition', 'outputdir')
+			# extension is optional for tftp
+			try:
 				extension = definition.get('definition', 'extension')
-				burst = definition.get('definition', 'burst')
-
-				if (burst == 'none') or (burst == ''):
-					try:
-						renderedTemplate = Template( file = path, searchList = [ {'allHosts' : allHosts}, {'allNetworks' : allNetworks}, {'allTags' : allTags} ] )
-						outfile = open(outputdir + filename.split('.')[0] + extension, "w")
-						outfile.write(str(renderedTemplate))
-					except IOError:
-						pass
-					finally:
-						outfile.close()
-				# Iterate for Hosts
-				elif burst == 'hosts':
-					try:
-						for hostidx, host in allHosts.items():
-							renderedTemplate = Template( file = path, searchList = [ {'host' : host} ] )
-							outfile = open(outputdir + host['name'] + extension, "w")
-							outfile.write(str(renderedTemplate))
-					except IOError:
-						pass
-					finally:
-						outfile.close()
-				# Iterate for Networks
-				elif burst == 'networks':
-					try:
-						for networkidx, network in allNetworks:
-							renderedTemplate = Template( file = path, searchList = [ {'network' : network} ] )
-							outfile = open(outputdir + network['name'] + extension, "w")
-							outfile.write(str(renderedTemplate))
-					except IOError:
-						pass
-					finally:
-						outfile.close()
-				# Iterate for tags
-				elif burst == 'tags':
-					try:
-						for tagidx, tag in allTags:
-							renderedTemplate = Template( file = path, searchList = [ {'tag' : tag} ] )
-							outfile = open(outputdir + tag['name'] + extension, "w")
-							outfile.write(str(renderedTemplate))
-					except IOError:
-						pass
-					finally:
-						outfile.close()
+			except Exception, errtxt:
+				if definition.get('definition', 'burst') == 'tftp':
+					pass
 				else:
-					print 'Unknown burst method'
-
+					continue
+			if (burst == 'none') or (burst == ''):
+				try:
+					renderedTemplate = Template( file = path, searchList = [ {'allHosts' : allHosts}, {'allNetworks' : allNetworks}, {'allTags' : allTags} ] )
+					outfile = open(outputdir + filename.split('.')[0] + extension, "w")
+					outfile.write(str(renderedTemplate))
+				except IOError:
+					pass
+				finally:
+					outfile.close()
+			# Iterate for Hosts
+			elif burst == 'hosts':
+				try:
+					for hostidx, host in allHosts.items():
+						renderedTemplate = Template( file = path, searchList = [ {'host' : host} ] )
+						outfile = open(outputdir + host['name'] + extension, "w")
+						outfile.write(str(renderedTemplate))
+				except IOError:
+					pass
+				finally:
+					outfile.close()
+			# Iterate for Networks
+			elif burst == 'networks':
+				try:
+					for networkidx, network in allNetworks:
+						renderedTemplate = Template( file = path, searchList = [ {'network' : network} ] )
+						outfile = open(outputdir + network['name'] + extension, "w")
+						outfile.write(str(renderedTemplate))
+				except IOError:
+					pass
+				finally:
+					outfile.close()
+			# Iterate for tags
+			elif burst == 'tags':
+				try:
+					for tagidx, tag in allTags:
+						renderedTemplate = Template( file = path, searchList = [ {'tag' : tag} ] )
+						outfile = open(outputdir + tag['name'] + extension, "w")
+						outfile.write(str(renderedTemplate))
+				except IOError:
+					pass
+				finally:
+					outfile.close()
+			# Iterate for macs
+			elif burst == 'tftp':
+				try:
+					for hostidx, host in allHosts.items():
+						for ifaceidx, iface in host['ifaces'].items():
+							renderedTemplate = Template( file = path, searchList = [ {'iface' : iface} ] )
+							outfile = open(outputdir + iface['mac'].lower().replace(":", "-"), "w")
+							outfile.write(str(renderedTemplate))
+				except IOError:
+					pass
+				finally:
+					outfile.close()
+			else:
+				print 'Unknown burst method'
 
 
 
