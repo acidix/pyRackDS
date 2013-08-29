@@ -101,33 +101,33 @@ for rtHostIdx, rtHost in rtHosts.items():
 				allHosts[rtHost['id']]['netboot'] = True
 			allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
 
-	# Add network information to host
-	# Loop over all ipv4 objects of the host
+	## Add network information to host
+	## Loop over all ipv4 objects of the host
 	for rtHostInfoIdx, rtHostInfo in rtHostInfos['ipv4'].items():
-		# For multiple assignments to one address, all interface assigned are reported.
-		# This is to loop over all interfaces allocated to this address and then find
-		# the one that matches our object_id
+		## For multiple assignments to one address, all interface assigned are reported.
+		## This is to loop over all interfaces allocated to this address and then find
+		## the one that matches our object_id
 		for rtHostAllocIdx, rtHostAlloc in rtHostInfo['addrinfo']['allocs'].items():
 			if (rtHostAlloc['object_id'] == rtHost['id']):
 				allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']] = {	
 					'name'	: rtHostAlloc['name'],
 					'addr'	: rtHostInfo['addrinfo']['ip']
 				}
-				# Add L2 address info to each interface with an IP
-				# This information is located in a different tree (ports)
+				## Add L2 address info to each interface with an IP
+				## This information is located in a different tree (ports)
 				for rtHostLinkIdx, rtHostLink in rtHostInfos['ports'].items():
 					if (rtHostLink['name'] == rtHostAlloc['name']):
 						allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['mac'] = rtHostLink['l2address']
 						allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['fqdn'] = rtHostLink['label']
 
-				# Add network information to the network tree
-				# We have to loop over all known Networks to see where we belong to
+				## Add network information to the network tree
+				## We have to loop over all known Networks to see where we belong to
 				for NetworkIdx, Network in allNetworks.items():
 					NetworkAddr = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['addr']
 					NetworkObj = Network['ip'] + '/' + Network['mask']
 
-					# Add static assignments
-					# Check if our address belongs to the network, but is not the network address itself
+					## Add static assignments
+					## Check if our address belongs to the network, but is not the network address itself
 					if ( ( ipaddress.ip_address(NetworkAddr) in ipaddress.ip_network(NetworkObj) ) and ( NetworkAddr != Network['ip'] ) ):
 						try:
 							# First, add the netmask to the host
@@ -148,8 +148,8 @@ for rtHostIdx, rtHost in rtHosts.items():
 								}
 						except KeyError:
 							continue
-					# Add dynamic assignments - allocations on the network address
-					# Allocate IP = Network address to put the host into a dynamic range
+					## Add dynamic assignments - allocations on the network address
+					## Allocate IP = Network address to put the host into a dynamic range
 					elif (NetworkAddr == Network['ip']):
 						try:
 							_iface = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['name']
@@ -166,42 +166,54 @@ for rtHostIdx, rtHost in rtHosts.items():
 							continue
 
 
-######## Populate all tags ########
+## -----------------------------------------
+## Populate all tags
+## -----------------------------------------
 
-# Initialize the Tag tree
+## Initialize the Tag tree
 rtTags = rtClient.get_tags(True)
 
 for rtTagIdx, rtTag in rtTags.items():
 	if rtTag['kidc'] == 0:
-		# If the tag doesn't have childs, just add it to other_tags
+		## If the tag doesn't have childs, just add it to other_tags
 		allTags['other_tags'].append(rtTag.tag)
 	else:
 		if rtTag['tag'] == config.get('tags', 'puppet_parent'):
-			# Add all kids of the puppet tree to puppet_tags
+			## Add all kids of the puppet tree to puppet_tags
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['puppet_tags'].append(rtTagKid['tag'])
 		elif rtTag['tag'] == config.get('tags', 'cobbler_parent'):
-			# Add all kids of the cobbler tree to cobbler_tags
+			## Add all kids of the cobbler tree to cobbler_tags
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['cobbler_tags'].append(rtTagKid['tag'])	
 		else:
-			# This is hierarchical, but neither puppet nor cobbler
-			# Flatten and add to other_tags
+			## This is hierarchical, but neither puppet nor cobbler
+			## Flatten and add to other_tags
 			allTags['other_tags'].append(rtTag['tag'])
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['other_tags'].append(rtTagKid['tag'])	
 
-# Start the templating process
+
+## -----------------------------------------
+## Templating
+## -----------------------------------------
+
+## Loop through all files in the templatedir
 for dirname, dirnames, filenames in os.walk(__templatedir):
 	for filename in filenames:
+		## Check if the templates has the ending tmpl
 		if filename.split('.')[1] == 'tmpl':
 			path = os.path.join(__templatedir, filename)
+			## Grab the configuration
 			definition = ConfigParser.ConfigParser()
 			definition.readfp(open(__definitiondir + '/' + filename.split('.')[0] + '.cfg'))
-			# Read Definition
-			burst = definition.get('definition', 'burst')
-			outputdir = definition.get('definition', 'outputdir')
-			# extension is optional for tftp
+			## Read Definition
+			try:
+				burst = definition.get('definition', 'burst')
+				outputdir = definition.get('definition', 'outputdir')
+			except Exception, errtxt:
+				continue
+			## extension is optional for tftp
 			try:
 				extension = definition.get('definition', 'extension')
 			except Exception, errtxt:
@@ -209,6 +221,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					pass
 				else:
 					continue
+			## Run without burst, create a single file
 			if (burst == 'none') or (burst == ''):
 				try:
 					renderedTemplate = Template( file = path, searchList = [ {'allHosts' : allHosts}, {'allNetworks' : allNetworks}, {'allTags' : allTags} ] )
@@ -218,7 +231,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					pass
 				finally:
 					outfile.close()
-			# Iterate for Hosts
+			## Iterate on allHosts
 			elif burst == 'hosts':
 				try:
 					for hostidx, host in allHosts.items():
@@ -229,7 +242,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					pass
 				finally:
 					outfile.close()
-			# Iterate for Networks
+			# Iterate on allNetworks
 			elif burst == 'networks':
 				try:
 					for networkidx, network in allNetworks:
@@ -240,7 +253,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					pass
 				finally:
 					outfile.close()
-			# Iterate for tags
+			# Iterate on allTags
 			elif burst == 'tags':
 				try:
 					for tagidx, tag in allTags:
@@ -251,7 +264,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					pass
 				finally:
 					outfile.close()
-			# Iterate for macs
+			# Iterate on all MAC's
 			elif burst == 'tftp':
 				try:
 					for hostidx, host in allHosts.items():
