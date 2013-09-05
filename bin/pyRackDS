@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
 import ipaddress
-import sys,os,inspect,ConfigParser
+import sys,os,inspect
 from pprint import pprint
 from Cheetah.Template import Template
 
 ## Libpath quirks
-racklib = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
-sys.path.insert(0, racklib)
+rackpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
+confpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
+sys.path.insert(0, rackpath)
+sys.path.insert(0, confpath)
 from client import *
+from config import __config__
 
 ## -----------------------------------------
 ## Helper function to calculate a dotted netmask
@@ -20,21 +23,12 @@ def calcDottedNetmask(mask):
     return "%d.%d.%d.%d" % ((bits & 0xff000000) >> 24, (bits & 0xff0000) >> 16, (bits & 0xff00) >> 8 , (bits & 0xff))
 
 
-## Read Configuration
-configdir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
-config = ConfigParser.ConfigParser()
-config.readfp(open(configdir + '/main.cfg'))
-
 ## Define configuration options
 __templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
 __definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
-__username = config.get('main', 'username')
-__password = config.get('main', 'password')
-__apiurl = config.get('main', 'apiurl').strip('"')
-__tftp_restrict = config.get('conf', 'restrict_tftp')
 
 ## Open the client api
-rtClient = RacktablesClient(__apiurl, __username, __password)
+rtClient = RacktablesClient(__config__['main']['apiurl'], __config__['main']['username'], __config__['main']['password'])
 
 ## Initialize Trees
 allNetworks = {}
@@ -90,14 +84,14 @@ for rtHostIdx, rtHost in rtHosts.items():
 	## Add tags to host
 	for etagidx, etag in rtHostInfos['etags'].items():
 		if etag['parent_id'] != "":
-			if rtHostInfos['itags'][etag['parent_id']]['tag'] == config.get('tags', 'puppet_parent'):
+			if rtHostInfos['itags'][etag['parent_id']]['tag'] == __config__['tags']['puppet_parent']:
 				allHosts[rtHost['id']]['puppet_tags'].append(etag['tag'])
-			elif rtHostInfos['itags'][etag['parent_id']]['tag'] == config.get('tags', 'cobbler_parent'):
+			elif rtHostInfos['itags'][etag['parent_id']]['tag'] == __config__['tags']['cobbler_parent']:
 				allHosts[rtHost['id']]['cobbler_profile'] = etag['tag']
 			else:
 				allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
 		else :
-			if etag['tag'] == config.get('tags', 'netboot'):
+			if etag['tag'] == __config__['tags']['netboot']:
 				allHosts[rtHost['id']]['netboot'] = True
 			allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
 
@@ -178,11 +172,11 @@ for rtTagIdx, rtTag in rtTags.items():
 		## If the tag doesn't have childs, just add it to other_tags
 		allTags['other_tags'].append(rtTag.tag)
 	else:
-		if rtTag['tag'] == config.get('tags', 'puppet_parent'):
+		if rtTag['tag'] == __config__['tags']['puppet_parent']:
 			## Add all kids of the puppet tree to puppet_tags
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['puppet_tags'].append(rtTagKid['tag'])
-		elif rtTag['tag'] == config.get('tags', 'cobbler_parent'):
+		elif rtTag['tag'] == __config__['tags']['cobbler_parent']:
 			## Add all kids of the cobbler tree to cobbler_tags
 			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
 				allTags['cobbler_tags'].append(rtTagKid['tag'])	
@@ -268,7 +262,7 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 			elif burst == 'tftp':
 				try:
 					for hostidx, host in allHosts.items():
-						if __tftp_restrict == "False" or host['netboot'] == True:
+						if __config__['conf']['tftp_restrict'] == "False" or host['netboot'] == True:
 							for ifaceidx, iface in host['ifaces'].items():
 								try:
 									if iface['mac'] != '':
@@ -283,7 +277,4 @@ for dirname, dirnames, filenames in os.walk(__templatedir):
 					outfile.close()
 			else:
 				print 'Unknown burst method'
-
-
-
 
