@@ -1,18 +1,18 @@
 __config__ = {
-			"main":
-				{
-					apiurl: "http://racktables/api.php",
-					username: "admin",
-					password: "secret"
-				}
-			"conf":
-				{
-					restrict_tftp: True
-				}
-			"tags":
-				{
-					puppet_parent: "puppet",
-					cobbler_parent: "cobbler",
-					netboot: "netboot"
-				}
+    "racktables":
+    {
+        "apiurl": "http://racktables/api.php",
+        "username": "admin",
+        "password": "secret",
+        "worker": 5
+    },
+    "tftp":
+    {
+        "restrict_tftp": True,
+        "netboot_tag": "netboot"
+    },
+    "tags":
+    {
+        "special_tags": [ "puppet", "cobbler" ]
+    }
 }

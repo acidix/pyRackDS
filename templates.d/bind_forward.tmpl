@@ -1,0 +1,3 @@
+#for $Host in $network.hosts
+${Host.label.split(".")[0]}		IN A $Host.ip;
+#end for

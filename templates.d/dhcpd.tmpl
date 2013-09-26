@@ -20,7 +20,7 @@ authoritative;
 subnet 192.168.0.0 netmask 255.255.255.0 {
      option routers             192.168.0.1;
      option domain-name-servers 192.168.0.1;
-     option domain-name         "eaalab.hpi.uni-potsdam.de";
+     option domain-name         "mydomain.lan";
      option subnet-mask         255.255.255.0;
      option ntp-servers         192.168.0.1;
      filename                   "/pxelinux.0";
@@ -31,17 +31,15 @@ subnet 192.168.0.0 netmask 255.255.255.0 {
 
 group {
 
-#for $hostkey, $Host in $allHosts.items()
-  #for $ifacekey, $Interface in $Host.ifaces.items()
-	$Interface.fqdn {
-		hardware-ethernet $Interface.mac;
-		fixed-address $Interface.addr;
-		option host-name "$Interface.fqdn";
-		option subnet-mast 255.255.255.0;
-		filename "/pxelinux.0";
-		next-server 192.168.0.1;
-	}
-  #end for
+#for $Host in $network.hosts
+    $Host.label {
+        hardware-ethernet $Host.l2address;
+        fixed-address $Host.ip;
+        option host-name "$Host.label";
+        option subnet-mast 255.255.255.0;
+        filename "/pxelinux.0";
+        next-server 192.168.0.1;
+    }
 #end for
 
 }

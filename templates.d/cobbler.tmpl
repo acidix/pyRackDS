@@ -2,23 +2,31 @@ class cobbler_server {
 
 	include cobbler
 
-#for $hostkey, $Host in $allHosts.items()
-	cobblersystem { '${Host.name}.eaalab.hpi.uni-potsdam.de':
+#for $Host in $allHosts.values
+	cobblersystem { '${Host.name}.mydomain.lan':
 	  ensure     => present,
-	  profile    => '$Host.cobbler_profile',
+	  #if "cobbler" in $Host.tags
+	  profile    => '$Host.tags.cobbler[0]',
+	  #end if
 	  interfaces => { #slurp
-  #for $ifacekey, $Interface in $Host.ifaces.items()
+  #for $Interface in $Host.network.values
 '$Interface.name' => {
-	                    mac_address => '$Interface.mac',
+	                    mac_address => '$Interface.l2address',
 	                    static      => true,
 	                    management  => true,
-	                    ip_address  => '$Interface.addr',
-	                    netmask     => '$Interface.mask',
-	                    dns_name    => '$Interface.fqdn'
+	                #if "ip" in $Interface
+	                    ip_address  => '$Interface.ip',
+	                	#for $Network in $allNetworks.values
+	                		#if $Interface.ip in $Network.network
+	                    netmask     => '$Network.dottedMask',
+	                		#end if
+	                	#end for
+	                #end if
+	                    dns_name    => '$Interface.label'
 	                  },
   #end for
 	  },
-	  hostname   => '${Host.name}.eaalab.hpi.uni-potsdam.de',
+	  hostname   => '${Host.name}.mydomain.lan',
 	  comment    => '$Host.comment'
 	}
 #end for

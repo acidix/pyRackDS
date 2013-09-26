@@ -1,9 +1,11 @@
 node $host.name {
-	#for $puppet_class in $host.puppet_tags
-	include $puppet_class
-	#end for
+    #if "puppet" in $host.tags
+        #for $puppet_class in $host.tags.puppet
+    include $puppet_class
+        #end for
+    #end if
 
-	if defined( "$host.name") {
-		class { "$host.name": }
-	}
+    if defined( "node-$host.name") {
+        	class { "node-$host.name": }
+    }
 }

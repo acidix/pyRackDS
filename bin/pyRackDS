@@ -1,11 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -B
 
 import ipaddress
-import sys,os,inspect
-from pprint import pprint
+import sys
+import os
+import inspect
+import argparse
+from threading import Thread
+from Queue import Queue
 from Cheetah.Template import Template
 
-## Libpath quirks
 rackpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
 confpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
 sys.path.insert(0, rackpath)
@@ -13,268 +16,494 @@ sys.path.insert(0, confpath)
 from client import *
 from config import __config__
 
-## -----------------------------------------
-## Helper function to calculate a dotted netmask
-## -----------------------------------------
+global rtHosts
+global rtNetworks
+global rtTags
+global allNetworks
+global allHosts
+global allTags
+global rtPool
+rtPool = Queue()
+
+
+class hostDetailAdder(Thread):
+    """Extends host object information. Extends the threading.Thread
+        module to be invoked in parallel.
+
+    """
+
+    def __init__(self, objectID):
+        """Initialize the hostDetailAdder object.
+
+        :param objectID: Object ID for which to collect information
+
+        """
+        super(hostDetailAdder, self).__init__()
+        self._objectID = objectID
+
+        rtPoolItem = rtPool.get()
+        self._rtObjectDetail = rtPoolItem.get_object(objectID)
+        rtPool.put(rtPoolItem)
+
+    def run(self):
+        """Start Thread of type hostDetailAdder.
+
+        """
+        self._network = self.getObjectNetworkDetails()
+        self._tags = self.getObjectTagDetails()
+
+    def getObjectNetworkDetails(self):
+        """Get network tree for the given object.
+
+        :returns: Dictionary with information about network ports
+
+        """
+        rtHostNetworkInfo = queryDict(self._rtObjectDetail["ports"],
+            ( "id", "iif_name", "name", "l2address", "label" ))
+
+        for key in [key for key in rtHostNetworkInfo]:
+            targetkey = rtHostNetworkInfo[key]["name"]
+            rtHostNetworkInfo[targetkey] = rtHostNetworkInfo.pop(key)
+
+        for rtHostInfoIPv4 in self._rtObjectDetail["ipv4"].values():
+            if rtHostInfoIPv4["osif"] not in rtHostNetworkInfo:
+                return
+
+            rtHostNetworkInfo[rtHostInfoIPv4["osif"]]["ip"] = ipaddress.ip_address(rtHostInfoIPv4["addrinfo"]["ip"])
+
+        return rtHostNetworkInfo
+
+    def getObjectTagDetails(self):
+        """Get tag tree for the given object.
+
+        :returns: Dictionary with tag information for the given object
+
+        """
+        rtHostTagInfo = {}
+        rtHostTagInfoTemp = {}
+
+        rtHostTagInfoTemp["other_tags"] = filter(lambda etag:
+            not etag["parent_id"],
+            self._rtObjectDetail["etags"].values() )
+
+        for special_tag in __config__["tags"]["special_tags"]:
+            parent = filter(lambda itag: itag["tag"] == special_tag,
+                self._rtObjectDetail["itags"].values() )
+
+            if len(parent) == 0 or len(parent) > 1:
+                continue
+
+            rtHostTagInfoTemp[special_tag] = filter(lambda etag:
+                etag["parent_id"] == parent[0]["id"],
+                    self._rtObjectDetail["etags"].values() )
+
+        for tag_group in rtHostTagInfoTemp.keys():
+            rtHostTagInfo[tag_group] = []
+            [rtHostTagInfo[tag_group].append(x["tag"]) for x in rtHostTagInfoTemp[tag_group]]
+
+        return rtHostTagInfo
+
+
+class networkDetailAdder(Thread):
+    """Adds details to the network tree. Extends the threading.Thread
+        module to be invoked in parallel.
+
+    """
+
+    def __init__(self, objectID):
+        """Initialize networkDetailAdder object.
+
+        :param objectID: Object ID (network)
+
+        """
+        super(networkDetailAdder, self).__init__()
+        self._objectID = objectID
+
+    def run(self):
+        """Start Thread of type networkDetailAdder.
+
+        """
+        self._network = ipaddress.ip_network(allNetworks[self._objectID]["ip"] + "/" + allNetworks[self._objectID]["mask"])
+        self._hosts = self.getNetworkDetails()
+        self._dottedMask = calcDottedNetmask(int(allNetworks[self._objectID]["mask"]))
+
+    def getNetworkDetails(self):
+        """Return detail information for the given network ID
+
+        :returns: Dictionary with information pulled from RackTables
+
+        """
+        hostsInNet = []
+
+        for host in allHosts.values():
+            networkAddr = filter(lambda network: "ip" in network
+                and ipaddress.ip_address(network["ip"]) in self._network,
+                host["network"].values())
+
+            if len(networkAddr) == 0:
+                continue
+
+            hostsInNet.append(networkAddr[0])
+
+        return hostsInNet
+
+
+class templateRunner(Thread):
+    """Run cheetah templating engine for the given definition file
+
+    """
+
+    def __init__(self, templateFile, definitionFile):
+        """Initialize object of type templateRunner
+
+        :param templateFile: Path to template
+        :param definitionFile: Path to definitino
+
+        """
+        super(templateRunner, self).__init__()
+        self._templateFile = templateFile
+        self._definitionFile = definitionFile
+        self._definition = __import__(self._definitionFile.replace(".py"
+            , "")).definition
+
+    def run(self):
+        """Start Thread of type templateRunner
+
+        """
+        burstMode = self._definition.get("burst", "none").lower()
+
+        trigger = {   "none"    : self.runNoBurst,
+                      "hosts"   : self.runHostBurst,
+                      "networks": self.runNetworkBurst,
+                      "tags"    : self.runTagBurst,
+                      "tftp"    : self.runTftpBurst
+                  }
+
+        trigger[burstMode]()
+
+    def runNoBurst(self):
+        """Run template with bursting mode: none
+
+        """
+        renderedTemplate = Template( file = self._templateFile,
+            searchList = [ {"allHosts" : allHosts},
+                {"allNetworks" : allNetworks},
+                {"allTags" : allTags} ] )
+        if not "filename" in self._definition:
+            self._definition["filename"] = os.path.basename(self._templateFile).split('.')[0]
+        outfile = open(self._definition["outputdir"] +
+            self._definition["filename"] +
+            self._definition["extension"], "w")
+        outfile.write(str(renderedTemplate))
+        outfile.close()
+
+    def runHostBurst(self):
+        """Run template with bursting mode: host
+
+        This loops through all entries in the allHosts object and runs
+        the template with the host dictionary.
+
+        """
+        for host in allHosts.values():
+            renderedTemplate = Template( file = self._templateFile,
+                searchList = [ {"host" : host} ] )
+            self._definition["filename"] = os.path.basename(self._templateFile).split('.')[0]
+            outfile = open(self._definition["outputdir"] +
+                host["name"] +
+                self._definition["extension"], "w")
+            outfile.write(str(renderedTemplate))
+            outfile.close()
+
+    def runNetworkBurst(self):
+        """Run template with bursting mode: network
+
+        This loops through all entries in the allNetworks object and
+        runs the template with the network dictionary.
+
+        """
+        for network in allNetworks.values():
+            renderedTemplate = Template( file = self._templateFile,
+                searchList = [ {"network" : network} ] )
+            outfile = open(self._definition["outputdir"] +
+                network["name"] +
+                self._definition["extension"], "w")
+            outfile.write(str(renderedTemplate))
+            outfile.close()
+
+    def runTagBurst(self):
+        """Run template with bursting mode: tag
+
+        This loops through all entries in the allTags object and runs
+        the template with the tag dictionary.
+
+        """
+        for tagidx, tag in allTags:
+            renderedTemplate = Template( file = self._templateFile,
+                searchList = [ {"tag" : tag} ] )
+            outfile = open(self._definition["outputdir"] +
+                tag["name"] +
+                self._definition["extension"], "w")
+            outfile.write(str(renderedTemplate))
+            outfile.close()
+
+    def runTftpBurst(self):
+        """Run template with bursting mode: tftp
+
+        This loops through all entries in the network part of each
+        allHosts object and runs the template if either the netboot
+        tag is set on the parent object or restrict_tftp is false
+        in the global configuration.
+
+        """
+
+        def writeTftpFile(host):
+            """Writes the tftp output file.
+
+            :param host: Dictionary with host information.
+
+            """
+            for iface in host["network"].values():
+                if not iface["mac"]:
+                    continue
+                renderedTemplate = Template( file = self._templateFile, searchList = [ {"iface" : iface},
+                        {"host" : host} ] )
+                outfile = open(outputdir +
+                    iface["mac"].lower().replace(":", "-"), "w")
+                outfile.write(str(renderedTemplate))
+                outfile.close
+
+        for host in allHosts.values():
+            if __config__["tftp"]["netboot_tag"] in host["tags"]["other_tags"]:
+                writeTftpFile(host)
+            if not __config__["tftp"]["restrict_tftp"]:
+                writeTftpFile(host)
+
+
 def calcDottedNetmask(mask):
+    """ Helper function to calculate a dotted netmask
+
+    :param mask: Netmask in cidr notation
+    :returns: Netmask in dot-decimal notation
+
+    """
     bits = 0
     for i in xrange(32-mask,32):
         bits |= (1 << i)
-    return "%d.%d.%d.%d" % ((bits & 0xff000000) >> 24, (bits & 0xff0000) >> 16, (bits & 0xff00) >> 8 , (bits & 0xff))
+    return "%d.%d.%d.%d" % ((bits & 0xff000000) >> 24,
+        (bits & 0xff0000) >> 16, (bits & 0xff00) >> 8 , (bits & 0xff))
 
 
-## Define configuration options
-__templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
-__definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
+def queryDict(data, wanted):
+    """Return a subset of leafs in a dictionary. Example:
 
-## Open the client api
-rtClient = RacktablesClient(__config__['main']['apiurl'], __config__['main']['username'], __config__['main']['password'])
+    mydict {
+        "member 1": {
+            "attribute 1": "value 1",
+            "attribute 2": "value 2"
+        }
+    }
 
-## Initialize Trees
-allNetworks = {}
-allHosts = {}
-allTags = {
-	'puppet_tags' : [],
-	'cobbler_tags': [],
-	'other_tags'  : []
-}
+    querydict(mydict, ("attribute 1")) will return:
 
-## -----------------------------------------
-## Populate all ipv4 networks
-## -----------------------------------------
-
-## Initialize the Network tree
-rtNetworks = rtClient.get_ipv4space()
-
-for rtNetworkIdx, rtNetwork in rtNetworks.items():
-	allNetworks[rtNetwork['id']] = { 
-		'id' 		: rtNetwork['id'], 
-		'ip' 		: rtNetwork['ip'], 
-		'mask' 		: calcDottedNetmask(int(rtNetwork['mask'])), 
-		'name' 		: rtNetwork['name'],
-		'comment'	: rtNetwork['comment'],
-		'static'	: {},
-		'dynamic'	: {}
-	}
-
-## -----------------------------------------
-## Populate all hosts
-## -----------------------------------------
-
-## Initialize the Hosts tree
-rtHosts = rtClient.get_objects()
-
-for rtHostIdx, rtHost in rtHosts.items():
-	allHosts[rtHost['id']] = {	
-		'id' 		      : rtHost['id'],
-		'name'		      : rtHost['name'],
-		'dname'		      : rtHost['dname'],
-		'label'		      : rtHost['label'],
-		'objtype_id'      : rtHost['objtype_id'],
-		'ifaces'	      : {},
-		'comment'         : rtHost['comment'],
-		'puppet_tags'     : [],
-		'other_tags'      : [],
-		'cobbler_profile' : "",
-		'netboot'         : False
-		}
-
-	rtHostInfos = rtClient.get_object(rtHost['id'])
-
-	## Add tags to host
-	for etagidx, etag in rtHostInfos['etags'].items():
-		if etag['parent_id'] != "":
-			if rtHostInfos['itags'][etag['parent_id']]['tag'] == __config__['tags']['puppet_parent']:
-				allHosts[rtHost['id']]['puppet_tags'].append(etag['tag'])
-			elif rtHostInfos['itags'][etag['parent_id']]['tag'] == __config__['tags']['cobbler_parent']:
-				allHosts[rtHost['id']]['cobbler_profile'] = etag['tag']
-			else:
-				allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
-		else :
-			if etag['tag'] == __config__['tags']['netboot']:
-				allHosts[rtHost['id']]['netboot'] = True
-			allHosts[rtHost['id']]['other_tags'].append(etag['tag'])
-
-	## Add network information to host
-	## Loop over all ipv4 objects of the host
-	for rtHostInfoIdx, rtHostInfo in rtHostInfos['ipv4'].items():
-		## For multiple assignments to one address, all interface assigned are reported.
-		## This is to loop over all interfaces allocated to this address and then find
-		## the one that matches our object_id
-		for rtHostAllocIdx, rtHostAlloc in rtHostInfo['addrinfo']['allocs'].items():
-			if (rtHostAlloc['object_id'] == rtHost['id']):
-				allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']] = {	
-					'name'	: rtHostAlloc['name'],
-					'addr'	: rtHostInfo['addrinfo']['ip']
-				}
-				## Add L2 address info to each interface with an IP
-				## This information is located in a different tree (ports)
-				for rtHostLinkIdx, rtHostLink in rtHostInfos['ports'].items():
-					if (rtHostLink['name'] == rtHostAlloc['name']):
-						allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['mac'] = rtHostLink['l2address']
-						allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['fqdn'] = rtHostLink['label']
-
-				## Add network information to the network tree
-				## We have to loop over all known Networks to see where we belong to
-				for NetworkIdx, Network in allNetworks.items():
-					NetworkAddr = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['addr']
-					NetworkObj = Network['ip'] + '/' + Network['mask']
-
-					## Add static assignments
-					## Check if our address belongs to the network, but is not the network address itself
-					if ( ( ipaddress.ip_address(NetworkAddr) in ipaddress.ip_network(NetworkObj) ) and ( NetworkAddr != Network['ip'] ) ):
-						try:
-							# First, add the netmask to the host
-							allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['mask'] = Network['mask']
-
-							# Now, add the host information to the network tree
-							_iface = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['name']
-							_addr  = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['addr']
-							_fqdn  = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['fqdn']
-							_mac   = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['mac']
-							# Check if all values are set, otherwise our config will look mangled
-							if ( _addr and _fqdn and _mac ):
-								allNetworks[Network['id']]['static'][allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['fqdn']] = {
-									'iface'	: _iface,
-									'addr'	: _addr,
-									'fqdn'	: _fqdn,
-									'mac'	: _mac
-								}
-						except KeyError:
-							continue
-					## Add dynamic assignments - allocations on the network address
-					## Allocate IP = Network address to put the host into a dynamic range
-					elif (NetworkAddr == Network['ip']):
-						try:
-							_iface = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['name']
-							_fqdn  = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['fqdn']
-							_mac   = allHosts[rtHost['id']]['ifaces'][rtHostAlloc['name']]['mac']
-							# Check if all values are set, otherwise our config will look mangled
-							if ( _fqdn and _mac ):
-								allNetworks[Network['id']]['dynamic'][allHosts[rtHost[1]['id']]['ifaces'][rtHostAlloc[1]['name']]['fqdn']] = {
-									'iface'	: _iface,
-									'fqdn'	: _fqdn,
-									'mac'	: _mac
-								}
-						except KeyError:
-							continue
+    mydict {
+        "member 1": {
+            "attribute 1": "value 1",
+        }
+    }
 
 
-## -----------------------------------------
-## Populate all tags
-## -----------------------------------------
+    :param data: Source dictionary
+    :param wanted: Child leafs to be returned
+    :returns: Dictionary with selected leaf entries
 
-## Initialize the Tag tree
-rtTags = rtClient.get_tags(True)
-
-for rtTagIdx, rtTag in rtTags.items():
-	if rtTag['kidc'] == 0:
-		## If the tag doesn't have childs, just add it to other_tags
-		allTags['other_tags'].append(rtTag.tag)
-	else:
-		if rtTag['tag'] == __config__['tags']['puppet_parent']:
-			## Add all kids of the puppet tree to puppet_tags
-			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
-				allTags['puppet_tags'].append(rtTagKid['tag'])
-		elif rtTag['tag'] == __config__['tags']['cobbler_parent']:
-			## Add all kids of the cobbler tree to cobbler_tags
-			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
-				allTags['cobbler_tags'].append(rtTagKid['tag'])	
-		else:
-			## This is hierarchical, but neither puppet nor cobbler
-			## Flatten and add to other_tags
-			allTags['other_tags'].append(rtTag['tag'])
-			for rtTagKidIdx, rtTagKid in rtTag['kids'].items():
-				allTags['other_tags'].append(rtTagKid['tag'])	
+    """
+    result = {}
+    for k, v in data.items():
+        v2 = { k2:v[k2] for k2 in wanted if k2 in v }
+        if v2:
+            result[k] = v2
+    return result
 
 
-## -----------------------------------------
-## Templating
-## -----------------------------------------
+def createRtWorker(QueueObj, items=5):
+    """Create workers of type RacktablesClient
 
-## Loop through all files in the templatedir
-for dirname, dirnames, filenames in os.walk(__templatedir):
-	for filename in filenames:
-		## Check if the templates has the ending tmpl
-		if filename.split('.')[1] == 'tmpl':
-			path = os.path.join(__templatedir, filename)
-			## Grab the configuration
-			definition = ConfigParser.ConfigParser()
-			definition.readfp(open(__definitiondir + '/' + filename.split('.')[0] + '.cfg'))
-			## Read Definition
-			try:
-				burst = definition.get('definition', 'burst')
-				outputdir = definition.get('definition', 'outputdir')
-			except Exception, errtxt:
-				continue
-			## extension is optional for tftp
-			try:
-				extension = definition.get('definition', 'extension')
-			except Exception, errtxt:
-				if definition.get('definition', 'burst') == 'tftp':
-					pass
-				else:
-					continue
-			## Run without burst, create a single file
-			if (burst == 'none') or (burst == ''):
-				try:
-					renderedTemplate = Template( file = path, searchList = [ {'allHosts' : allHosts}, {'allNetworks' : allNetworks}, {'allTags' : allTags} ] )
-					outfile = open(outputdir + filename.split('.')[0] + extension, "w")
-					outfile.write(str(renderedTemplate))
-				except IOError:
-					pass
-				finally:
-					outfile.close()
-			## Iterate on allHosts
-			elif burst == 'hosts':
-				try:
-					for hostidx, host in allHosts.items():
-						renderedTemplate = Template( file = path, searchList = [ {'host' : host} ] )
-						outfile = open(outputdir + host['name'] + extension, "w")
-						outfile.write(str(renderedTemplate))
-				except IOError:
-					pass
-				finally:
-					outfile.close()
-			# Iterate on allNetworks
-			elif burst == 'networks':
-				try:
-					for networkidx, network in allNetworks:
-						renderedTemplate = Template( file = path, searchList = [ {'network' : network} ] )
-						outfile = open(outputdir + network['name'] + extension, "w")
-						outfile.write(str(renderedTemplate))
-				except IOError:
-					pass
-				finally:
-					outfile.close()
-			# Iterate on allTags
-			elif burst == 'tags':
-				try:
-					for tagidx, tag in allTags:
-						renderedTemplate = Template( file = path, searchList = [ {'tag' : tag} ] )
-						outfile = open(outputdir + tag['name'] + extension, "w")
-						outfile.write(str(renderedTemplate))
-				except IOError:
-					pass
-				finally:
-					outfile.close()
-			# Iterate on all MAC's
-			elif burst == 'tftp':
-				try:
-					for hostidx, host in allHosts.items():
-						if __config__['conf']['tftp_restrict'] == "False" or host['netboot'] == True:
-							for ifaceidx, iface in host['ifaces'].items():
-								try:
-									if iface['mac'] != '':
-										renderedTemplate = Template( file = path, searchList = [ {'iface' : iface} ] )
-										outfile = open(outputdir + iface['mac'].lower().replace(":", "-"), "w")
-										outfile.write(str(renderedTemplate))
-								except Exception, errtxt:
-									print errtxt
-				except IOError:
-					pass
-				finally:
-					outfile.close()
-			else:
-				print 'Unknown burst method'
+    :param QueueObj: Object queue to add the worker to
+    :param items: Number of items to add to the queue
+
+    """
+    def createWorker(QueueObj):
+        rtClient = RacktablesClient(__config__["racktables"]["apiurl"],
+            __config__["racktables"]["username"],
+            __config__["racktables"]["password"])
+        QueueObj.put(rtClient)
+
+    threads = []
+    for x in range(0,items):
+        logging.debug("Adding RT worker %s" % str(x))
+        thread = Thread(target=createWorker, args=(QueueObj,))
+        threads.append(thread)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+
+def initRtTrees():
+    """Initalizes the global Racktables trees rtHosts, rtNetworks and
+        rtTags
+
+    """
+    global rtHosts, rtNetworks, rtTags
+    rtPoolItem = rtPool.get()
+
+    rtHosts = rtPoolItem.get_objects()
+    rtNetworks = rtPoolItem.get_ipv4space()
+    rtTags = rtPoolItem.get_tags(True)
+
+    rtPool.put(rtPoolItem)
+
+
+def addObjectDetails():
+    """Adds details to the allHosts tree by invoking hostDetailAdder
+        for each leaf of allHosts.
+
+    """
+    threads = []
+    for host in allHosts.values():
+        thread = hostDetailAdder(host["id"])
+        threads.append(thread)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+        allHosts[t._objectID]["network"] = t._network
+        allHosts[t._objectID]["tags"] = t._tags
+
+
+def addNetworkDetails():
+    """Adds details to the allNetworks tree by invoking
+        networkDetailAdder for each leaf of the allNetworks tree.
+
+    """
+    threads = []
+    for net in allNetworks.values():
+        thread = networkDetailAdder(net["id"])
+        threads.append(thread)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+        allNetworks[t._objectID]["hosts"] = t._hosts
+        allNetworks[t._objectID]["dottedMask"] = t._dottedMask
+        allNetworks[t._objectID]["network"] = t._network
+
+
+def getTags(tagDict):
+    """Builds the allTags tree from the tagDict parameter.
+
+    :param tagDict: Source dictionary containing tags (fed from
+        Racktables)
+    :returns: Dictionary containing a hierarchical tag tree.
+
+    """
+    retDict = queryDict(tagDict, ( "id", "is_assignable", "parent_id", "tag" ) )
+
+    for idx in [idx for idx in tagDict]:
+        if tagDict[idx]["kidc"] == "0":
+            continue
+        retDict[idx]["kids"] = getTags(tagDict[idx]["kids"])
+
+    for idx in [idx for idx in tagDict]:
+        retDict[tagDict[idx]["tag"]] = retDict.pop(idx)
+
+    return retDict
+
+
+def runTemplates(_templatedir, _definitiondir):
+    """Runs all templates in the definitions folder by invoking
+        templateRunner on each file found.
+
+    :param _templatedir: Directory to scan for templates
+    :param _definitinodir: Directory to scan for definitions
+    :returns: Dictionary with information pulled from RackTables
+
+    """
+    sys.path.insert(0, _definitiondir)
+    threads = []
+    for _definition in os.listdir(_definitiondir):
+        template = _templatedir + "/" + _definition.replace(".py", ".tmpl")
+        thread = templateRunner(template, _definition)
+        threads.append(thread)
+
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+
+def runSingleTemplate(_templatedir, _definitiondir, _template):
+    sys.path.insert(0, _definitiondir)
+    template = _templatedir + "/" + _template + ".tmpl"
+    definition = _template + ".py"
+    thread = templateRunner(template, definition)
+    thread.start()
+    thread.join()
+
+
+def main():
+    """Main function
+    """
+    global allNetworks,allHosts, allTags
+
+    parser = argparse.ArgumentParser(prog="pyRackDS")
+    parser.add_argument('-v', '--verbose',action="store_true",
+                        help="Increase output verbosity.")
+    parser.add_argument('-a', '--all',action="store_true",
+                        help="Run all templates (default).")
+    parser.add_argument('-H', '--host',action="store_true",
+                        help="Output host tree.")
+    parser.add_argument('-N', '--network',action="store_true",
+                        help="Output network tree.")
+    parser.add_argument('-T', '--tag',action="store_true",
+                        help="Output tag tree.")
+    parser.add_argument('-t', '--template',type=str,
+                        help="Only process this template.")
+    args = parser.parse_args()
+
+    _templatedir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../templates.d")))
+    _definitiondir = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../definitions.d")))
+
+    createRtWorker(rtPool, __config__["racktables"]["worker"])
+
+    initRtTrees()
+
+    allNetworks = queryDict(rtNetworks, ( "id", "ip", "mask", "name", "comment" ) )
+    allHosts = queryDict(rtHosts, ( "id", "name", "dname", "label", "objtype_id", "comment") )
+    allTags = getTags(rtTags)
+
+    addObjectDetails()
+    addNetworkDetails()
+
+    if args.host:
+        pprint.pprint(allHosts)
+        sys.exit(0)
+    if args.network:
+        pprint.pprint(allNetworks)
+        sys.exit(0)
+    if args.tag:
+        pprint.pprint(allTags)
+        sys.exit(0)
+    if args.template:
+        runSingleTemplate(_templatedir, _definitiondir, args.template)
+        sys.exit(0)
+
+    runTemplates(_templatedir, _definitiondir)
+
+
+if __name__ == "__main__":
+    main()
 
