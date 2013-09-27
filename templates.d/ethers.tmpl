@@ -1,0 +1,5 @@
+#for $Host in $network.hosts
+#if $Host.l2address and $Host.ip
+$Host.l2address		${Host.label.split(".")[0]}
+#end if
+#end for
