@@ -498,7 +498,8 @@ def main():
         pprint.pprint(allTags)
         sys.exit(0)
     if args.template:
-        runSingleTemplate(_templatedir, _definitiondir, args.template)
+        for _template in args.template.split(","):
+            runSingleTemplate(_templatedir, _definitiondir, _template)
         sys.exit(0)
 
     runTemplates(_templatedir, _definitiondir)
