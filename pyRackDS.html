@@ -1,0 +1,379 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyRackDS module &mdash; bin  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="bin  documentation" href="index.html" />
+    <link rel="prev" title="Welcome to pyRackDS’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to pyRackDS’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">bin  documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-pyRackDS">
+<span id="pyrackds-module"></span><h1>pyRackDS module<a class="headerlink" href="#module-pyRackDS" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="pyRackDS.addNetworkDetails">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">addNetworkDetails</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#addNetworkDetails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.addNetworkDetails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds details to the allNetworks tree by invoking
+networkDetailAdder for each leaf of the allNetworks tree.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.addObjectDetails">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">addObjectDetails</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#addObjectDetails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.addObjectDetails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds details to the allHosts tree by invoking hostDetailAdder
+for each leaf of allHosts.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.calcDottedNetmask">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">calcDottedNetmask</tt><big>(</big><em>mask</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#calcDottedNetmask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.calcDottedNetmask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to calculate a dotted netmask</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mask</strong> &#8211; Netmask in cidr notation</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Netmask in dot-decimal notation</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.createRtWorker">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">createRtWorker</tt><big>(</big><em>QueueObj</em>, <em>items=5</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#createRtWorker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.createRtWorker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create workers of type RacktablesClient</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>QueueObj</strong> &#8211; Object queue to add the worker to</li>
+<li><strong>items</strong> &#8211; Number of items to add to the queue</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.getTags">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">getTags</tt><big>(</big><em>tagDict</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#getTags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.getTags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the allTags tree from the tagDict parameter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tagDict</strong> &#8211; Source dictionary containing tags (fed from
+Racktables)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Dictionary containing a hierarchical tag tree.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="pyRackDS.hostDetailAdder">
+<em class="property">class </em><tt class="descclassname">pyRackDS.</tt><tt class="descname">hostDetailAdder</tt><big>(</big><em>objectID</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#hostDetailAdder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.hostDetailAdder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<p>Extends host object information. Extends the threading.Thread
+module to be invoked in parallel.</p>
+<dl class="method">
+<dt id="pyRackDS.hostDetailAdder.getObjectNetworkDetails">
+<tt class="descname">getObjectNetworkDetails</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#hostDetailAdder.getObjectNetworkDetails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.hostDetailAdder.getObjectNetworkDetails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get network tree for the given object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary with information about network ports</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.hostDetailAdder.getObjectTagDetails">
+<tt class="descname">getObjectTagDetails</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#hostDetailAdder.getObjectTagDetails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.hostDetailAdder.getObjectTagDetails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get tag tree for the given object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary with tag information for the given object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.hostDetailAdder.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#hostDetailAdder.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.hostDetailAdder.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start Thread of type hostDetailAdder.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.initRtTrees">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">initRtTrees</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#initRtTrees"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.initRtTrees" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initalizes the global Racktables trees rtHosts, rtNetworks and
+rtTags</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.main">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main function</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="pyRackDS.networkDetailAdder">
+<em class="property">class </em><tt class="descclassname">pyRackDS.</tt><tt class="descname">networkDetailAdder</tt><big>(</big><em>objectID</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#networkDetailAdder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.networkDetailAdder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<p>Adds details to the network tree. Extends the threading.Thread
+module to be invoked in parallel.</p>
+<dl class="method">
+<dt id="pyRackDS.networkDetailAdder.getNetworkDetails">
+<tt class="descname">getNetworkDetails</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#networkDetailAdder.getNetworkDetails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.networkDetailAdder.getNetworkDetails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return detail information for the given network ID</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary with information pulled from RackTables</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.networkDetailAdder.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#networkDetailAdder.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.networkDetailAdder.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start Thread of type networkDetailAdder.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.queryDict">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">queryDict</tt><big>(</big><em>data</em>, <em>wanted</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#queryDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.queryDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a subset of leafs in a dictionary. Example:</p>
+<dl class="docutils">
+<dt>mydict {</dt>
+<dd><dl class="first docutils">
+<dt>&#8220;member 1&#8221;: {</dt>
+<dd>&#8220;attribute 1&#8221;: &#8220;value 1&#8221;,
+&#8220;attribute 2&#8221;: &#8220;value 2&#8221;</dd>
+</dl>
+<p class="last">}</p>
+</dd>
+</dl>
+<p>}</p>
+<p>querydict(mydict, (&#8220;attribute 1&#8221;)) will return:</p>
+<dl class="docutils">
+<dt>mydict {</dt>
+<dd><dl class="first docutils">
+<dt>&#8220;member 1&#8221;: {</dt>
+<dd>&#8220;attribute 1&#8221;: &#8220;value 1&#8221;,</dd>
+</dl>
+<p class="last">}</p>
+</dd>
+</dl>
+<p>}</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> &#8211; Source dictionary</li>
+<li><strong>wanted</strong> &#8211; Child leafs to be returned</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Dictionary with selected leaf entries</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.runSingleTemplate">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">runSingleTemplate</tt><big>(</big><em>_templatedir</em>, <em>_definitiondir</em>, <em>_template</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#runSingleTemplate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.runSingleTemplate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pyRackDS.runTemplates">
+<tt class="descclassname">pyRackDS.</tt><tt class="descname">runTemplates</tt><big>(</big><em>_templatedir</em>, <em>_definitiondir</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#runTemplates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.runTemplates" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Runs all templates in the definitions folder by invoking</dt>
+<dd>templateRunner on each file found.</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>_templatedir</strong> &#8211; Directory to scan for templates</li>
+<li><strong>_definitinodir</strong> &#8211; Directory to scan for definitions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Dictionary with information pulled from RackTables</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="pyRackDS.templateRunner">
+<em class="property">class </em><tt class="descclassname">pyRackDS.</tt><tt class="descname">templateRunner</tt><big>(</big><em>templateFile</em>, <em>definitionFile</em><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
+<p>Run cheetah templating engine for the given definition file</p>
+<dl class="method">
+<dt id="pyRackDS.templateRunner.run">
+<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start Thread of type templateRunner</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.templateRunner.runHostBurst">
+<tt class="descname">runHostBurst</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.runHostBurst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.runHostBurst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run template with bursting mode: host</p>
+<p>This loops through all entries in the allHosts object and runs
+the template with the host dictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.templateRunner.runNetworkBurst">
+<tt class="descname">runNetworkBurst</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.runNetworkBurst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.runNetworkBurst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run template with bursting mode: network</p>
+<p>This loops through all entries in the allNetworks object and
+runs the template with the network dictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.templateRunner.runNoBurst">
+<tt class="descname">runNoBurst</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.runNoBurst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.runNoBurst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run template with bursting mode: none</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.templateRunner.runTagBurst">
+<tt class="descname">runTagBurst</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.runTagBurst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.runTagBurst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run template with bursting mode: tag</p>
+<p>This loops through all entries in the allTags object and runs
+the template with the tag dictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pyRackDS.templateRunner.runTftpBurst">
+<tt class="descname">runTftpBurst</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pyRackDS.html#templateRunner.runTftpBurst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pyRackDS.templateRunner.runTftpBurst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run template with bursting mode: tftp</p>
+<p>This loops through all entries in the network part of each
+allHosts object and runs the template if either the netboot
+tag is set on the parent object or restrict_tftp is false
+in the global configuration.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to pyRackDS&#8217;s documentation!</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/pyRackDS.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to pyRackDS’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">bin  documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Thomas Uhde.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+pyRackDS module
+===============
+
+.. automodule:: pyRackDS
+    :members:
+    :undoc-members:
+    :show-inheritance:
