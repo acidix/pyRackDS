@@ -268,14 +268,15 @@ class templateRunner(Thread):
                     continue
                 renderedTemplate = Template( file = self._templateFile, searchList = [ {"iface" : iface},
                         {"host" : host} ] )
-                outfile = open(outputdir +
-                    iface["mac"].lower().replace(":", "-"), "w")
+                outfile = open(self._definition["outputdir"] +
+                    iface["l2address"].lower().replace(":", "-"), "w")
                 outfile.write(str(renderedTemplate))
                 outfile.close
 
         for host in allHosts.values():
             if __config__["tftp"]["netboot_tag"] in host["tags"]["other_tags"]:
                 writeTftpFile(host)
+                continue
             if not __config__["tftp"]["restrict_tftp"]:
                 writeTftpFile(host)
 
