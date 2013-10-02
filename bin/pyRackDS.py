@@ -264,7 +264,7 @@ class templateRunner(Thread):
 
             """
             for iface in host["network"].values():
-                if not iface["mac"]:
+                if not iface["l2address"]:
                     continue
                 renderedTemplate = Template( file = self._templateFile, searchList = [ {"iface" : iface},
                         {"host" : host} ] )
