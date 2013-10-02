@@ -143,7 +143,8 @@ class networkDetailAdder(Thread):
             if len(networkAddr) == 0:
                 continue
 
-            hostsInNet.append(networkAddr[0])
+            for network in networkAddr:
+                hostsInNet.append(network)
 
         return hostsInNet
 
