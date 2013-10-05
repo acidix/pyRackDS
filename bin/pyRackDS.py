@@ -27,8 +27,7 @@ rtPool = Queue()
 
 
 class hostDetailAdder(Thread):
-    """Extends host object information. Extends the threading.Thread
-        module to be invoked in parallel.
+    """Extends host object information of the allHosts global variable. Extends the threading.Thread class to be invoked in parallel.
 
     """
 
@@ -46,14 +45,16 @@ class hostDetailAdder(Thread):
         rtPool.put(rtPoolItem)
 
     def run(self):
-        """Start Thread of type hostDetailAdder.
+        """Start Thread of type hostDetailAdder and collect information.
 
         """
         self._network = self.getObjectNetworkDetails()
         self._tags = self.getObjectTagDetails()
 
     def getObjectNetworkDetails(self):
-        """Get network tree for the given object.
+        """Get network tree for the given object. This adds one sub-
+        tree for every interface and tries to find the IP address
+        based on the interface name.
 
         :returns: Dictionary with information about network ports
 
@@ -74,7 +75,11 @@ class hostDetailAdder(Thread):
         return rtHostNetworkInfo
 
     def getObjectTagDetails(self):
-        """Get tag tree for the given object.
+        """Get tag tree for the given object. For every entry in the
+        'special_tags' configuration option it implicitly creates one
+        sub-tree to hold all the child-tags to this element.
+        Creates one explicitly defined sub-tree called 'other_tags' to
+        list all tags that are no child to one 'special_tag'.
 
         :returns: Dictionary with tag information for the given object
 
@@ -105,8 +110,8 @@ class hostDetailAdder(Thread):
 
 
 class networkDetailAdder(Thread):
-    """Adds details to the network tree. Extends the threading.Thread
-        module to be invoked in parallel.
+    """Adds details to the network tree in the allNetworks variable.
+    Extends the threading.Thread module to be invoked in parallel.
 
     """
 
@@ -120,7 +125,8 @@ class networkDetailAdder(Thread):
         self._objectID = objectID
 
     def run(self):
-        """Start Thread of type networkDetailAdder.
+        """Start Thread of type networkDetailAdder and collect
+        information.
 
         """
         self._network = ipaddress.ip_network(allNetworks[self._objectID]["ip"] + "/" + allNetworks[self._objectID]["mask"])
@@ -128,7 +134,10 @@ class networkDetailAdder(Thread):
         self._dottedMask = calcDottedNetmask(int(allNetworks[self._objectID]["mask"]))
 
     def getNetworkDetails(self):
-        """Return detail information for the given network ID
+        """Return detail information for the given network ID. This
+        loops through the allHosts tree and checks each interface for
+        membership in the current network (based on network address and
+        netmask).
 
         :returns: Dictionary with information pulled from RackTables
 
@@ -150,15 +159,16 @@ class networkDetailAdder(Thread):
 
 
 class templateRunner(Thread):
-    """Run cheetah templating engine for the given definition file
+    """Run cheetah templating engine for the given definition file.
+    Extends the threading.Thread class to be invoked in parallel.
 
     """
 
     def __init__(self, templateFile, definitionFile):
         """Initialize object of type templateRunner
 
-        :param templateFile: Path to template
-        :param definitionFile: Path to definitino
+        :param templateFile: Path to template (*.tmpl)
+        :param definitionFile: Path to definition (*.py)
 
         """
         super(templateRunner, self).__init__()
@@ -168,11 +178,14 @@ class templateRunner(Thread):
             , "")).definition
 
     def run(self):
-        """Start Thread of type templateRunner
+        """Start Thread of type templateRunner. Burst mode defaults to
+        'none'.
 
         """
         burstMode = self._definition.get("burst", "none").lower()
 
+        # Function mapping. Used to dynamically invoke the right burst
+        # function.
         trigger = {   "none"    : self.runNoBurst,
                       "hosts"   : self.runHostBurst,
                       "networks": self.runNetworkBurst,
@@ -190,11 +203,14 @@ class templateRunner(Thread):
             searchList = [ {"allHosts" : allHosts},
                 {"allNetworks" : allNetworks},
                 {"allTags" : allTags} ] )
+
         if not "filename" in self._definition:
             self._definition["filename"] = os.path.basename(self._templateFile).split('.')[0]
+
         outfile = open(self._definition["outputdir"] +
             self._definition["filename"] +
             self._definition["extension"], "w")
+
         outfile.write(str(renderedTemplate))
         outfile.close()
 
@@ -202,16 +218,31 @@ class templateRunner(Thread):
         """Run template with bursting mode: host
 
         This loops through all entries in the allHosts object and runs
-        the template with the host dictionary.
+        the template with the host dictionary. The output file will be
+        called host[name] + _definition[extension]
+
+        Use the 'limit' configuration option to run for one specific host
+        only.
+
+        use the 'prefix' configuration option in case you want the filename
+        prefixed.
 
         """
-        for host in allHosts.values():
+        if "limit" in _definition:
+            burstHosts = filter(lambda host: host == _definition["limit"],
+                allHosts)
+        if not "limit" in _definition:
+            burstHosts = allHosts
+
+        for host in burstHosts.values():
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"host" : host} ] )
-            self._definition["filename"] = os.path.basename(self._templateFile).split('.')[0]
+
             outfile = open(self._definition["outputdir"] +
+                _definition.get("prefix", "") +
                 host["name"] +
                 self._definition["extension"], "w")
+
             outfile.write(str(renderedTemplate))
             outfile.close()
 
@@ -219,15 +250,31 @@ class templateRunner(Thread):
         """Run template with bursting mode: network
 
         This loops through all entries in the allNetworks object and
-        runs the template with the network dictionary.
+        runs the template with the network dictionary. The output file
+        will be called network[name] + _definition[extension]
+
+        Use the 'limit' configuration option to run for one specific
+        network only.
+
+        use the 'prefix' configuration option in case you want the filename
+        prefixed.
 
         """
-        for network in allNetworks.values():
+        if "limit" in _definition:
+            burstNetworks = filter(lambda network:
+                network == _definition["limit"], allNetworks)
+        if not "limit" in _definition:
+            burstNetworks = allNetworks
+
+        for network in burstNetworks.values():
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"network" : network} ] )
+
             outfile = open(self._definition["outputdir"] +
+                _definition.get("prefix", "") +
                 network["name"] +
                 self._definition["extension"], "w")
+
             outfile.write(str(renderedTemplate))
             outfile.close()
 
@@ -235,13 +282,28 @@ class templateRunner(Thread):
         """Run template with bursting mode: tag
 
         This loops through all entries in the allTags object and runs
-        the template with the tag dictionary.
+        the template with the tag dictionary. This is especially useful
+        if you want to loop through the sub-tree of a specific
+        special_tag.
+
+        Use the 'limit' configuration option to run for one specific
+        tag only.
+
+        use the 'prefix' configuration option in case you want the filename
+        prefixed.
 
         """
-        for tagidx, tag in allTags:
+        if "limit" in _definition:
+            burstTags = filter(lambda tag: tag == _definition["limit"],
+                allTags)
+        if not "limit" in _definition:
+            burstTags = allTags
+
+        for tag in burstTags.values():
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"tag" : tag} ] )
             outfile = open(self._definition["outputdir"] +
+                _definition.get("prefix", "") +
                 tag["name"] +
                 self._definition["extension"], "w")
             outfile.write(str(renderedTemplate))
@@ -282,7 +344,8 @@ class templateRunner(Thread):
 
 
 def calcDottedNetmask(mask):
-    """ Helper function to calculate a dotted netmask
+    """ Helper function to convert a cidr notated netmask into a dot-decimal
+        notated netmask. (23 -> 255.255.254.0)
 
     :param mask: Netmask in cidr notation
     :returns: Netmask in dot-decimal notation
@@ -328,7 +391,7 @@ def queryDict(data, wanted):
 
 
 def createRtWorker(QueueObj, items=5):
-    """Create workers of type RacktablesClient
+    """Create workers of type RacktablesClient and put them into QueueObj.
 
     :param QueueObj: Object queue to add the worker to
     :param items: Number of items to add to the queue
@@ -355,7 +418,7 @@ def createRtWorker(QueueObj, items=5):
 
 def initRtTrees():
     """Initalizes the global Racktables trees rtHosts, rtNetworks and
-        rtTags
+        rtTags.
 
     """
     global rtHosts, rtNetworks, rtTags
@@ -448,6 +511,14 @@ def runTemplates(_templatedir, _definitiondir):
     [t.join() for t in threads]
 
 def runSingleTemplate(_templatedir, _definitiondir, _template):
+    """Runs the defined template by invoking templateRunner
+
+    :param _templatedir: Directory to scan for templates
+    :param _definitinodir: Directory to scan for definitions
+    :param _template: Template to execute
+    :returns: Dictionary with information pulled from RackTables
+
+    """
     sys.path.insert(0, _definitiondir)
     template = _templatedir + "/" + _template + ".tmpl"
     definition = _template + ".py"
