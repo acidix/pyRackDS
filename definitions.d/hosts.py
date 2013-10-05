@@ -1,4 +1,5 @@
 definition = { "outputdir" : "/var/tmp/",
                "extension" : ".hosts",
-               "burst"     : "networks"
+               "burst"     : "networks",
+               "limit"     : "mynetwork"
 }

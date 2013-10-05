@@ -1,4 +1,4 @@
-definition = { "outputdir": "/var/tmp/system.d/",
-               "extension": ".pp",
-               "burst": "none"
+definition = { "outputdir" : "/var/tmp/system.d/",
+               "extension" : ".pp",
+               "burst"     : "none"
 }
