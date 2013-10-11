@@ -228,18 +228,17 @@ class templateRunner(Thread):
         prefixed.
 
         """
-        if "limit" in _definition:
-            burstHosts = filter(lambda host: host == _definition["limit"],
-                allHosts)
-        if not "limit" in _definition:
-            burstHosts = allHosts
+        if "limit" in self._definition:
+            burstHosts = filter(lambda host: host["name"] == self._definition["limit"], allHosts.values())
+        if not "limit" in self._definition:
+            burstHosts = allHosts.values()
 
-        for host in burstHosts.values():
+        for host in burstHosts:
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"host" : host} ] )
 
             outfile = open(self._definition["outputdir"] +
-                _definition.get("prefix", "") +
+                self._definition.get("prefix", "") +
                 host["name"] +
                 self._definition["extension"], "w")
 
@@ -260,18 +259,18 @@ class templateRunner(Thread):
         prefixed.
 
         """
-        if "limit" in _definition:
+        if "limit" in self._definition:
             burstNetworks = filter(lambda network:
-                network == _definition["limit"], allNetworks)
-        if not "limit" in _definition:
-            burstNetworks = allNetworks
+                network["name"] == self._definition["limit"], allNetworks.values())
+        if not "limit" in self._definition:
+            burstNetworks = allNetworks.values()
 
-        for network in burstNetworks.values():
+        for network in burstNetworks:
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"network" : network} ] )
 
             outfile = open(self._definition["outputdir"] +
-                _definition.get("prefix", "") +
+                self._definition.get("prefix", "") +
                 network["name"] +
                 self._definition["extension"], "w")
 
@@ -293,17 +292,17 @@ class templateRunner(Thread):
         prefixed.
 
         """
-        if "limit" in _definition:
-            burstTags = filter(lambda tag: tag == _definition["limit"],
-                allTags)
-        if not "limit" in _definition:
-            burstTags = allTags
+        if "limit" in self._definition:
+            burstTags = filter(lambda tag: tag == self._definition["limit"],
+                allTags.values())
+        if not "limit" in self._definition:
+            burstTags = allTags.values()
 
-        for tag in burstTags.values():
+        for tag in burstTags:
             renderedTemplate = Template( file = self._templateFile,
                 searchList = [ {"tag" : tag} ] )
             outfile = open(self._definition["outputdir"] +
-                _definition.get("prefix", "") +
+                self._definition.get("prefix", "") +
                 tag["name"] +
                 self._definition["extension"], "w")
             outfile.write(str(renderedTemplate))
