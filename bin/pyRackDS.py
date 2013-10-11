@@ -330,7 +330,7 @@ class templateRunner(Thread):
                     continue
                 renderedTemplate = Template( file = self._templateFile, searchList = [ {"iface" : iface},
                         {"host" : host} ] )
-                outfile = open(self._definition["outputdir"] +
+                outfile = open(self._definition["outputdir"] + "01-" +
                     iface["l2address"].lower().replace(":", "-"), "w")
                 outfile.write(str(renderedTemplate))
                 outfile.close
