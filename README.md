@@ -9,7 +9,7 @@ This package is intended to, ultimately, be a two-way interface to:
 * use data from [Racktables](http://github.com/racktables/racktables) to create different kinds of configuration files, and
 * use third-party applications to pump data into [Racktables](http://github.com/racktables/racktables) (such as facter)
 
-Currently this heavily relies on the work of [Ian Bettinger](https://github.com/ibettinger) from which I borrow both, the PHP-based [Racktables-API](https://github.com/ibettinger/racktables) and the corresponding [Python module](https://github.com/ibettinger/racktables-py-client) to consume the data. 
+Currently this heavily relies on the work of [Ian Bettinger](https://github.com/ibettinger) from which I borrow both, the PHP-based [Racktables-API](https://github.com/ibettinger/racktables) and the corresponding [Python module](https://github.com/ibettinger/racktables-py-client) to consume the data.
 
 What you will get is a well documented, Python-dictionary based way of creating files via the Cheetah templating engine. This by itself is sufficient to create e.g.
 
@@ -33,9 +33,9 @@ A detailled description with example data will be made available soon.
 
 To activate a template, you need 2 things:
 
-- the template (surprise) 
+- the template (surprise)
 (ending in **.tmpl** in the **templates.d** directory)
-- a definition (*surprise!*) 
+- a definition (*surprise!*)
 (ending in **.cfg** in the **definitions.d** directory)
 
 The definition is mainly there to some more flexibility in the way you can create files. It'll give you the option to specify
@@ -48,7 +48,7 @@ The definition is mainly there to some more flexibility in the way you can creat
 
 This is tricky. And the name might be confusing - but it works for me. I wanted to not only be able to run through the template with all the trees at once, but for each object in a specific tree as well. This gives you the ability to create one file per host, per network, per tag (you get the idea). Currently available *burst modes* are:
 
-- **none** (default) 
+- **none** (default)
 (available dictionaries: *allHosts, allNetworks, allTags*)
 - hosts
 (available dictionary: *host*)
@@ -83,7 +83,7 @@ pyRackDS only needs some minor configuration, thus, basically, the API URL plus 
     apiurl = "http://racktables/api.php"
     username = admin
     password = mypassword
-     
+
     [tags]
     puppet_parent = puppet
     cobbler_parent = cobbler
@@ -94,3 +94,16 @@ The *puppet* parent tag is for assigning one or multiple *puppet* classes to a n
 
 The *cobbler* tag is to assign a *cobbler* profile. At least that's how I implemented it. Change it as you like - as I said - it's easily customizable and should ideally serve whatever use-case you need.
 
+# License
+
+Copyright (c) 2013 Thomas Uhde
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Contributors
+
+[Thomas Uhde](https://github.com/acidix), [Christian Schwarz](https://github.com/T-002)
