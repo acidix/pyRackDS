@@ -145,6 +145,8 @@ class networkDetailAdder(Thread):
         hostsInNet = []
 
         for host in allHosts.values():
+            if not "network" in host:
+                continue
             networkAddr = filter(lambda network: "ip" in network
                 and ipaddress.ip_address(network["ip"]) in self._network,
                 host["network"].values())
