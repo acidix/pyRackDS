@@ -1,4 +1,4 @@
-#!/usr/bin/env python -B
+#!/usr/bin/env python
 
 import ipaddress
 import sys
@@ -8,6 +8,8 @@ import argparse
 from threading import Thread
 from Queue import Queue
 from Cheetah.Template import Template
+
+sys.dont_write_bytecode = True
 
 rackpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../python/lib/racktables")))
 confpath = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"../conf")))
