@@ -38,37 +38,125 @@
           <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
         </div>
 
-        <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+        <h1>
+<a name="pyrackds" class="anchor" href="#pyrackds"><span class="octicon octicon-link"></span></a>pyRackDS</h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Python data services for <a href="http://github.com/RackTables/racktables">Racktables</a>.</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<h1>
+<a name="what-does-it-do" class="anchor" href="#what-does-it-do"><span class="octicon octicon-link"></span></a>What does it do?</h1>
+
+<p>This package is intended to, ultimately, be a two-way interface to:</p>
+
+<ul>
+<li>use data from <a href="http://github.com/racktables/racktables">Racktables</a> to create different kinds of configuration files, and</li>
+<li>use third-party applications to pump data into <a href="http://github.com/racktables/racktables">Racktables</a> (such as facter)</li>
+</ul><p>Currently this heavily relies on the work of <a href="https://github.com/ibettinger">Ian Bettinger</a> from which I borrow both, the PHP-based <a href="https://github.com/ibettinger/racktables">Racktables-API</a> and the corresponding <a href="https://github.com/ibettinger/racktables-py-client">Python module</a> to consume the data.</p>
+
+<p>What you will get is a well documented, Python-dictionary based way of creating files via the Cheetah templating engine. This by itself is sufficient to create e.g.</p>
+
+<ul>
+<li>Puppet node definitions</li>
+<li>Cobbler system registrations</li>
+<li>Nagios / Icinga configurations</li>
+</ul><p>Those templates are supplied as examples how to use both, the templating engine and the definitions to create the files needed to run the service(s).</p>
+
+<p>pyRackDS is fully customizable and I've spent enough time documenting the iterations for you to extend it. Need information about the asset tag? Just add it to the tree … I thought about making the content of the tree configurable -- but given the expected audience I decided against it. Hacking a couple of lines in Python will get you there goal anyway.</p>
+
+<h1>
+<a name="how-do-i-use-it" class="anchor" href="#how-do-i-use-it"><span class="octicon octicon-link"></span></a>How do I use it?</h1>
+
+<p>Just clone the repository. It's all there, including examples how to use the templating engine. There are 3 dictionary trees:</p>
+
+<ul>
+<li>allHosts</li>
+<li>allNetworks</li>
+<li>allTags</li>
+</ul><p>A detailled description with example data will be made available soon.</p>
+
+<p>To activate a template, you need 2 things:</p>
+
+<ul>
+<li>the template (surprise)
+(ending in <strong>.tmpl</strong> in the <strong>templates.d</strong> directory)</li>
+<li>a definition (<em>surprise!</em>)
+(ending in <strong>.cfg</strong> in the <strong>definitions.d</strong> directory)</li>
+</ul><p>The definition is mainly there to some more flexibility in the way you can create files. It'll give you the option to specify</p>
+
+<ul>
+<li>a target directory with the variable <strong>outputdir</strong> (such as /etc/puppet/manifests/nodes)</li>
+<li>a file extension with the variable <strong>extension</strong> (such as .pp)</li>
+<li>burst mode (<em>what?</em>) with the variable <strong>burst</strong>
+</li>
+</ul><h2>
+<a name="burst-mode" class="anchor" href="#burst-mode"><span class="octicon octicon-link"></span></a>Burst mode</h2>
+
+<p>This is tricky. And the name might be confusing - but it works for me. I wanted to not only be able to run through the template with all the trees at once, but for each object in a specific tree as well. This gives you the ability to create one file per host, per network, per tag (you get the idea). Currently available <em>burst modes</em> are:</p>
+
+<ul>
+<li>
+<strong>none</strong> (default)
+(available dictionaries: <em>allHosts, allNetworks, allTags</em>)</li>
+<li>hosts
+(available dictionary: <em>host</em>)</li>
+<li>networks
+(available dictionary: <em>network</em>)</li>
+<li>tags
+(available dictionary: <em>tag</em>)</li>
+<li>tftp
+(available dictionary: <em>iface</em>)</li>
+</ul><p>For burst mode <em>none</em>, the output file will be named like the template, with the ending specified in the definition (mytemplate.tmpl with mytemplate.cfg will create mytemplate.extension). For all other burst methods, the files will be named like the subelement-name followed by the extension. For hosts, this means you get:</p>
+
+<ul>
+<li>hostname1.pp</li>
+<li>hostname2.pp</li>
+<li>hostname3.pp</li>
+</ul><p>The definition uses the default Python <em>ConfigParser</em> module and therefore looks like an ini-style configuration:</p>
+
+<pre><code>[definition]
+outputdir = /var/tmp/puppet/
+extension = .pp
+burst = hosts
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>The configuration option <em>extension</em> is optional (aka not used) for burst methode <em>tftp</em></p>
 
-<h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+<h1>
+<a name="configuring-pyrackds" class="anchor" href="#configuring-pyrackds"><span class="octicon octicon-link"></span></a>Configuring pyRackDS</h1>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>pyRackDS only needs some minor configuration, thus, basically, the API URL plus username and password. It's stored in the <em>conf</em> directory and named <em>main.cfg</em>:</p>
 
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+<pre><code>[main]
+apiurl = "http://racktables/api.php"
+username = admin
+password = mypassword
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+[tags]
+puppet_parent = puppet
+cobbler_parent = cobbler
+</code></pre>
 
-<h3>
-<a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
+<p>The two additional configurations are specific to the main purpose - configuration management. You need to specify the parent tag names for puppet and cobbler tags.</p>
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p>The <em>puppet</em> parent tag is for assigning one or multiple <em>puppet</em> classes to a node.</p>
 
-<h3>
-<a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
+<p>The <em>cobbler</em> tag is to assign a <em>cobbler</em> profile. At least that's how I implemented it. Change it as you like - as I said - it's easily customizable and should ideally serve whatever use-case you need.</p>
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<h1>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h1>
+
+<p>Copyright (c) 2013 Thomas Uhde</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+
+<h1>
+<a name="contributors" class="anchor" href="#contributors"><span class="octicon octicon-link"></span></a>Contributors</h1>
+
+<p><a href="https://github.com/acidix">Thomas Uhde</a>, <a href="https://github.com/T-002">Christian Schwarz</a></p>
       </section>
 
     </div>
